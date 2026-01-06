@@ -17,7 +17,7 @@ class PersonHandler:
         num_persons: int,
         flight_dome_size: float,
         np_random: np.random.Generator,
-        move_speed: float = 0.05,
+        move_speed: float = 0.02,
     ):
         """__init__.
 
@@ -62,10 +62,8 @@ class PersonHandler:
         for i in range(self.num_persons):
             dist = self.np_random.uniform(low=1.0, high=self.flight_dome_size * 0.8)
             angle = self.np_random.uniform(0.0, 2.0 * math.pi)
+            self.targets[i] = [dist * math.cos(angle), dist * math.sin(angle), 0.0]
 
-            self.targets[i, 0] = dist * math.cos(angle)  # X
-            self.targets[i, 1] = dist * math.sin(angle)  # Y
-            self.targets[i, 2] = 0.0  # Z (Ground)
         # reset the error
         # self.new_distance = np.inf
         # self.old_distance = np.inf
@@ -112,23 +110,18 @@ class PersonHandler:
         #        )
 
     def update(self):
-        """Moves each person based on pseudo-random percentile values."""
+        """Moves each person pseudo-randomly."""
         for i in range(self.num_persons):
-            # Example: 40% chance to keep same direction, 20% to turn slightly, etc.
-            # Here's a simple version of your percentile-based direction logic:
-            rand_val = self.np_random.random()
+            # 80% chance to continue roughly in the current direction, 20% to turn more
+            angle_offset = self.np_random.uniform(-0.1, 0.1) if self.np_random.random() > 0.2 else self.np_random.uniform(-0.5, 0.5)
 
-            # Change direction pseudo-randomly
-            angle_offset = self.np_random.uniform(-math.pi / 4, math.pi / 4) if rand_val > 0.7 else 0.0
-
-            # Calculate movement vector (staying on ground)
             current_angle = math.atan2(self.targets[i, 1], self.targets[i, 0])
             new_angle = current_angle + angle_offset
 
             self.targets[i, 0] += self.move_speed * math.cos(new_angle)
             self.targets[i, 1] += self.move_speed * math.sin(new_angle)
 
-            # Keep them inside the dome
+            # Keep inside dome
             dist = np.linalg.norm(self.targets[i, :2])
             if dist > self.flight_dome_size:
                 self.targets[i, :2] *= (self.flight_dome_size / dist)
