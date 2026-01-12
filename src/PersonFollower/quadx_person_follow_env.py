@@ -57,7 +57,7 @@ class QuadXPersonFollowEnv(QuadXBaseEnv):
             render_resolution=render_resolution,
         )
 
-        # define waypoints
+        # define persons
         self.persons = PersonHandler(
             num_persons=num_persons,
             flight_dome_size=flight_dome_size,
