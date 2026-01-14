@@ -3,34 +3,43 @@ import matplotlib.pyplot as plt
 from PersonFollower.simple_handler import SimpleHandler
 
 class SimpleEnvironment:
-    def __init__(self, num_persons=5, size=50, person_speed=1.5, drone_speed=1.2):
-        # Initialize the persons handler
-        self.handler = SimpleHandler(num_persons, size, person_speed)
-        
+    def __init__(self, num_persons=5, size=50, person_speed=1.5, drone_speed=1.2, change_chance=0.2, drone_spawn_mode="center"):
+        # Initialize the persons handler with the passed parameters
+        self.handler = SimpleHandler(
+            num_persons=num_persons, 
+            size=size, 
+            speed=person_speed, 
+            change_chance=change_chance
+        )
+    
         self.size = size
         self.drone_speed = drone_speed
-        # Drone starts in center
-        self.drone_pos = np.array([size / 2.0, size / 2.0])
         
+        # Drone spawn logic
+        if drone_spawn_mode == "random":
+            self.drone_pos = np.random.uniform(0, self.size, size=2)
+        else: # Default to "center"
+            self.drone_pos = np.array([size / 2.0, size / 2.0])
+    
         # History for plotting
         self.person_hist = []
         self.drone_hist = []
 
     def run(self, steps=100):
         for _ in range(steps):
-            # 1. Update persons
+            # 1. Update persons (using handler's default change_chance)
             self.handler.step()
             persons = self.handler.get_positions()
-            
+        
             # 2. Drone Logic: Calculate average (center of mass)
             avg_pos = np.mean(persons, axis=0)
-            
+        
             # 3. Move drone toward average
             vec = avg_pos - self.drone_pos
             dist = np.linalg.norm(vec)
             if dist > 0:
                 self.drone_pos += (vec / dist) * self.drone_speed
-            
+        
             # Save state
             self.person_hist.append(persons.copy())
             self.drone_hist.append(self.drone_pos.copy())
@@ -59,6 +68,14 @@ class SimpleEnvironment:
         plt.show()
 
 if __name__ == "__main__":
-    sim = SimpleEnvironment(num_persons=5, size=60)
-    sim.run(steps=150)
+    # Example of how you can now customize everything from outside
+    sim = SimpleEnvironment(
+        num_persons=10, 
+        size=100, 
+        person_speed=2.0, 
+        drone_speed=1.5,
+        change_chance=0.1,
+        drone_spawn_mode="center"
+    )
+    sim.run(steps=200)
     sim.plot_results()
