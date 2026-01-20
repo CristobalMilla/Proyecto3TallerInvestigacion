@@ -1,6 +1,5 @@
-import gymnasium as gym
 import numpy as np
-from PersonFollower.quadx_person_follow_env import QuadXPersonFollowEnv
+from PersonFollower.v1.quadx_person_follow_env import QuadXPersonFollowEnv
 
 
 def train():

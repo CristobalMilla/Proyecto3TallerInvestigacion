@@ -8,7 +8,7 @@ import numpy as np
 from gymnasium import spaces
 
 from PyFlyt.gym_envs.quadx_envs.quadx_base_env import QuadXBaseEnv
-from PersonFollower.person_handler import PersonHandler
+from PersonFollower.v1.person_handler import PersonHandler
 
 
 class QuadXPersonFollowEnv(QuadXBaseEnv):
