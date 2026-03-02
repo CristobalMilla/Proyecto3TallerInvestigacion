@@ -3,7 +3,7 @@ from typing import Any, Literal
 import numpy as np
 from gymnasium import spaces
 from PyFlyt.gym_envs.quadx_envs.quadx_base_env import QuadXBaseEnv
-from PersonFollower.simple_handler2 import SimpleHandler
+from src.PersonFollower.simple_handler2 import SimpleHandler
 
 class QuadXSimpleFollowEnv(QuadXBaseEnv):
     def __init__(

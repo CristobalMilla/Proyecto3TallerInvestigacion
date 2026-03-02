@@ -2,7 +2,7 @@ import torch
 import os
 import numpy as np
 from stable_baselines3 import PPO
-from PersonFollower.simple_env2 import SimpleEnvironment
+from src.PersonFollower.simple_env2 import SimpleEnvironment
 
 # 1. Optimize CPU usage
 torch.set_num_threads(2)
@@ -28,7 +28,7 @@ def train():
     )
 
     print("Starting training...")
-    model.learn(total_timesteps=20000)
+    model.learn(total_timesteps=5000)
 
     # Save the model
     model.save("drone_follower_model")

@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import gymnasium as gym
 from gymnasium import spaces
-from PersonFollower.simple_handler import SimpleHandler
+from src.PersonFollower.simple_handler import SimpleHandler
 
 class SimpleEnvironment(gym.Env):
-    def __init__(self, num_persons=5, size=50, person_speed=1.5, drone_speed=1.2, change_chance=0.2, drone_spawn_mode="center"):
+    def __init__(self, num_persons=5, size=50, person_speed=0.2, drone_speed=1.2, change_chance=0.2, drone_spawn_mode="center"):
         super(SimpleEnvironment, self).__init__()
         self.num_persons = num_persons
         self.size = size

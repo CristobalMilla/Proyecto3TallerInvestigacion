@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from PersonFollower.simple_handler import SimpleHandler
+from src.PersonFollower.simple_handler import SimpleHandler
 
 class SimpleEnvironment:
     def __init__(self, num_persons=5, size=50, person_speed=1.5, drone_speed=1.2, change_chance=0.2, drone_spawn_mode="center"):
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     sim = SimpleEnvironment(
         num_persons=10, 
         size=100, 
-        person_speed=2.0, 
+        person_speed=0.2,
         drone_speed=1.5,
         change_chance=0.1,
         drone_spawn_mode="center"

@@ -2,7 +2,7 @@ import torch
 import os
 import numpy as np
 from stable_baselines3 import PPO
-from PersonFollower.quadx_simple_follow_env import QuadXSimpleFollowEnv
+from src.PersonFollower.quadx_simple_follow_env import QuadXSimpleFollowEnv
 
 # 1. Optimize CPU usage
 torch.set_num_threads(2)
