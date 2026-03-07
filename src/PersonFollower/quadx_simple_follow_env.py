@@ -3,7 +3,7 @@ from typing import Any, Literal
 import numpy as np
 from gymnasium import spaces
 from PyFlyt.gym_envs.quadx_envs.quadx_base_env import QuadXBaseEnv
-from src.PersonFollower.simple_handler2 import SimpleHandler
+from simple_handler import SimpleHandler
 
 class QuadXSimpleFollowEnv(QuadXBaseEnv):
     def __init__(
@@ -12,6 +12,7 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
         size: float = 10.0,
         person_speed: float = 0.05,
         change_chance: float = 0.2,
+        person_destination: tuple[float, float] | None = None,
         flight_mode: int = 0,
         max_duration_seconds: float = 10.0,
         agent_hz: int = 30,
@@ -37,13 +38,20 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
             num_persons=num_persons,
             size=size, # This is the radius/half-width
             speed=person_speed,
-            change_chance=change_chance
+            change_chance=change_chance,
+            destination=person_destination
         )
 
         # Observation space: Drone attitude + relative deltas to all persons
         # attitude_space is defined in base class (12 or 13 values)
         obs_shape = self.combined_space.shape[0] + (num_persons * 3)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(obs_shape,), dtype=np.float64)
+
+    def set_person_destination(self, destination: tuple[float, float] | None) -> None:
+        if destination is None:
+            self.person_handler.clear_destination()  # Sets a new random destination
+        else:
+            self.person_handler.set_destination(destination)
 
     def reset(self, *, seed: None | int = None, options: None | dict[str, Any] = dict()) -> tuple[np.ndarray, dict]:
 
@@ -90,13 +98,13 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
         # 3. Calculate relative deltas [dx, dy, dz] to each person
         # IMPORTANT: PyFlyt uses 3D, SimpleHandler is 2D. 
         # Persons are at ground level (z=0)
-        deltas = []
+        positions = []
         for i in range(self.person_handler.num_persons):
             # Calculate distance from drone (lin_pos) to person (persons_xy)
             dx = persons_xy[i, 0] - lin_pos[0]
             dy = persons_xy[i, 1] - lin_pos[1]
             dz = 0.0 - lin_pos[2]
-            deltas.extend([dx, dy, dz])
+            positions.extend([persons_xy[i, 0], persons_xy[i, 1], 0.2]) # [x, y, speed]
 
         # 4. Combine into final observation
         # Choose attitude representation based on the base class setting
@@ -106,7 +114,7 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
             attitude = np.concatenate([ang_vel, quaternion, lin_vel, lin_pos, self.action, aux_state])
         
         # Ensure result is float64 to match space definition
-        self.state = np.concatenate([attitude, deltas]).astype(np.float64).astype(np.float64)
+        self.state = np.concatenate([attitude, positions]).astype(np.float64).astype(np.float64)
 
     def compute_term_trunc_reward(self) -> None:
         # Check for collisions or out-of-bounds using PyFlyt base logic
@@ -151,7 +159,7 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
             # Extract all X and Y for person 'i' across all steps
             person_x = p_hist[:, i, 0]
             person_y = p_hist[:, i, 1]
-            ax1.plot(person_x, person_y, color='blue', alpha=0.3, label=f'P{i}' if num_people < 5 else None)
+            ax1.plot(person_x, person_y, marker='>', markevery=[-1], color='blue', alpha=0.3, label=f'P{i}' if num_people < 5 else None)
         
         ax1.plot(d_hist[:, 0], d_hist[:, 1], color='black', linewidth=2, label='Drone Path')
         ax1.scatter(d_hist[0, 0], d_hist[0, 1], color='green', marker='X', s=100, label='Start')

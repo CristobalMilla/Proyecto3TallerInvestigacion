@@ -2,7 +2,7 @@ import torch
 import os
 import numpy as np
 from stable_baselines3 import PPO
-from src.PersonFollower.quadx_simple_follow_env import QuadXSimpleFollowEnv
+from quadx_simple_follow_env import QuadXSimpleFollowEnv
 
 # 1. Optimize CPU usage
 torch.set_num_threads(2)
@@ -32,7 +32,7 @@ def train():
 
     print("Starting training on QuadX Physics...")
     # Physics training takes longer; let's try 50,000 steps
-    model.learn(total_timesteps=15000)
+    model.learn(total_timesteps=10)
 
     # Save the model
     model.save("quadx_follower_model")
@@ -51,7 +51,7 @@ def train():
     obs, _ = test_env.reset()
     print("Testing trained QuadX model for 200 steps...")
 
-    for _ in range(200):
+    for _ in range(50):
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, info = test_env.step(action)
         if terminated or truncated:
