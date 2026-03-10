@@ -11,7 +11,7 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
         num_persons: int = 3,
         size: float = 10.0,
         person_speed: float = 0.05,
-        change_chance: float = 0.2,
+        change_chance: float = 0.4, #prob de cambiar
         flight_mode: int = 0,
         max_duration_seconds: float = 10.0,
         agent_hz: int = 30,
@@ -161,6 +161,7 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
         p_hist = np.array(self.person_hist) # Shape: (steps, num_persons, 2)
         d_hist = np.array(self.drone_hist)  # Shape: (steps, 2)
         dist_hist = np.array(self.distance_hist)
+        goal = self.person_handler.get_common_goal()
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
@@ -174,7 +175,9 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
             person_x = p_hist[:, i, 0]
             person_y = p_hist[:, i, 1]
             ax1.plot(person_x, person_y, color='blue', alpha=0.3, label=f'P{i}' if num_people < 5 else None)
+            ax1.scatter(person_x[-1],person_y[-1], color='cyan', s=50, marker='o', label='Person End' if i == 0 else None)
 
+        ax1.scatter(goal[0], goal[1], color='orange', marker='*', s=180, label='Common Goal')
         ax1.plot(d_hist[:, 0], d_hist[:, 1], color='black', linewidth=2, label='Drone Path')
         ax1.scatter(d_hist[0, 0], d_hist[0, 1], color='green', marker='X', s=100, label='Start')
         ax1.scatter(d_hist[-1, 0], d_hist[-1, 1], color='red', marker='X', s=100, label='End')
