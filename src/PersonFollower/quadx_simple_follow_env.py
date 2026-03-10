@@ -40,9 +40,13 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
             change_chance=change_chance
         )
 
-        # Observation space: Drone attitude + relative deltas to all persons
-        # attitude_space is defined in base class (12 or 13 values)
-        obs_shape = self.combined_space.shape[0] + (num_persons * 3)
+        self.prev_avg_person_pos = np.zeros(2, dtype=np.float64)
+        self.avg_velocity_weight = 1.0
+
+        # Observation space: Drone attitude + [relative average position] + [average velocity]
+        # relative average position -> 3 values [dx, dy, dz]
+        # average velocity         -> 3 values [vx, vy, vz]
+        obs_shape = self.combined_space.shape[0] + 6
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(obs_shape,), dtype=np.float64)
 
     def reset(self, *, seed: None | int = None, options: None | dict[str, Any] = dict()) -> tuple[np.ndarray, dict]:
@@ -62,8 +66,14 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
         super().begin_reset(seed, options)
 
         # Reset Person positions
-        self.person_handler.positions = np.random.uniform(-self.flight_dome_size, self.flight_dome_size,
-                                                          size=(self.person_handler.num_persons, 2))
+        self.person_handler.positions = np.random.uniform(
+            -self.flight_dome_size,
+            self.flight_dome_size,
+            size=(self.person_handler.num_persons, 2)
+        )
+
+        current_avg = np.mean(self.person_handler.get_positions(), axis=0)
+        self.prev_avg_person_pos = current_avg.copy()
 
         # Initialize history for plotting
         self.person_hist = []
@@ -87,16 +97,28 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
             self.person_hist.append(persons_xy.copy())
             self.drone_hist.append(lin_pos[:2].copy())
 
-        # 3. Calculate relative deltas [dx, dy, dz] to each person
-        # IMPORTANT: PyFlyt uses 3D, SimpleHandler is 2D. 
-        # Persons are at ground level (z=0)
-        deltas = []
-        for i in range(self.person_handler.num_persons):
-            # Calculate distance from drone (lin_pos) to person (persons_xy)
-            dx = persons_xy[i, 0] - lin_pos[0]
-            dy = persons_xy[i, 1] - lin_pos[1]
-            dz = 0.0 - lin_pos[2]
-            deltas.extend([dx, dy, dz])
+        # 3. Compute average group position and velocity
+        avg_person_pos = np.mean(persons_xy, axis=0)
+        avg_person_vel = avg_person_pos - self.prev_avg_person_pos
+        self.prev_avg_person_pos = avg_person_pos.copy()
+
+        rel_avg_pos = np.array(
+            [
+                avg_person_pos[0] - lin_pos[0],
+                avg_person_pos[1] - lin_pos[1],
+                0.0 - lin_pos[2],
+            ],
+            dtype=np.float64,
+        )
+
+        weighted_avg_vel = np.array(
+            [
+                avg_person_vel[0] * self.avg_velocity_weight,
+                avg_person_vel[1] * self.avg_velocity_weight,
+                0.0,
+            ],
+            dtype=np.float64,
+        )
 
         # 4. Combine into final observation
         # Choose attitude representation based on the base class setting
@@ -104,9 +126,9 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
             attitude = np.concatenate([ang_vel, ang_pos, lin_vel, lin_pos, self.action, aux_state])
         else: # Quaternion
             attitude = np.concatenate([ang_vel, quaternion, lin_vel, lin_pos, self.action, aux_state])
-        
-        # Ensure result is float64 to match space definition
-        self.state = np.concatenate([attitude, deltas]).astype(np.float64).astype(np.float64)
+
+        group_features = np.concatenate([rel_avg_pos, weighted_avg_vel])
+        self.state = np.concatenate([attitude, group_features]).astype(np.float64)
 
     def compute_term_trunc_reward(self) -> None:
         # Check for collisions or out-of-bounds using PyFlyt base logic
@@ -116,18 +138,18 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
         # Calculate distance to the average position of persons
         persons_xy = self.person_handler.get_positions()
         avg_person_pos = np.mean(persons_xy, axis=0)
-        
+
         # Current drone position (from internal aviary)
         # We use lin_pos from state or get it directly
         drone_pos_3d = self.env.state(0)[3]
         drone_pos_2d = drone_pos_3d[:2]
-        
+
         distance = np.linalg.norm(avg_person_pos - drone_pos_2d)
         self.distance_hist.append(distance)
 
         # Reward: 1 / (distance + 0.1)
-        self.reward += 1.0 / (distance + 0.1) 
-        
+        self.reward += 1.0 / (distance + 0.1)
+
         # Penalty for being too high or too low (keep drone at a reasonable altitude)
         # Drone starts at 1.5, let's keep it between 0.5 and 3.0
         z_pos = drone_pos_3d[2]
@@ -139,20 +161,20 @@ class QuadXSimpleFollowEnv(QuadXBaseEnv):
         p_hist = np.array(self.person_hist) # Shape: (steps, num_persons, 2)
         d_hist = np.array(self.drone_hist)  # Shape: (steps, 2)
         dist_hist = np.array(self.distance_hist)
-    
+
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-    
+
         # Plot 1: Overhead 2D Map
         # Iterate through EACH person (axis 1)
         num_steps = p_hist.shape[0]
         num_people = p_hist.shape[1]
-        
+
         for i in range(num_people):
             # Extract all X and Y for person 'i' across all steps
             person_x = p_hist[:, i, 0]
             person_y = p_hist[:, i, 1]
             ax1.plot(person_x, person_y, color='blue', alpha=0.3, label=f'P{i}' if num_people < 5 else None)
-        
+
         ax1.plot(d_hist[:, 0], d_hist[:, 1], color='black', linewidth=2, label='Drone Path')
         ax1.scatter(d_hist[0, 0], d_hist[0, 1], color='green', marker='X', s=100, label='Start')
         ax1.scatter(d_hist[-1, 0], d_hist[-1, 1], color='red', marker='X', s=100, label='End')
