@@ -32,7 +32,7 @@ def train():
 
     print("Starting training on QuadX Physics...")
     # Physics training takes longer; let's try 50,000 steps
-    model.learn(total_timesteps=15000)
+    model.learn(total_timesteps=50000)
 
     # Save the model
     model.save("quadx_follower_model")
@@ -50,7 +50,9 @@ def train():
 
     obs, _ = test_env.reset()
     print("Testing trained QuadX model for 200 steps...")
-
+    print("Observation shape:", obs.shape)
+    # [rel_avg_x, rel_avg_y, rel_avg_z, vel_x, vel_y, vel_z]
+    print("Observation sample:", obs[-6:])
     for _ in range(200):
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, info = test_env.step(action)
